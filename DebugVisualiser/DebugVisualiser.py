@@ -1,74 +1,34 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QLabel
-from PyQt5.QtGui import QPainter, QColor, QPen
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
-import random
+from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtCore import pyqtSignal, QObject, QCoreApplication
+from PyQt5.QtWidgets import QMainWindow
 from win32api import GetSystemMetrics
+
+
+class _UpdateUiBackgroundColor(QObject):
+    updateSignal = pyqtSignal(int, int, int)
+
 
 class DebugVisualiser(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.title = 'Debug visualiser'
-        self.left = int(GetSystemMetrics(0)*.4)
-        self.top = int(GetSystemMetrics(1)*.4)
-        self.width = int(GetSystemMetrics(0)*.2)
-        self.height = int(GetSystemMetrics(1)*.2)
-        self.initUI()
-
-    def initUI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-
-        # Set window background color
-        self.setAutoFillBackground(True)
-        p = self.palette()
-        p.setColor(self.backgroundRole(), QColor(200, 0, 0))
-        self.setPalette(p)
-
-        # Add paint widget and paint
-        #self.m = PaintWidget(self)
-        #self.m.move(0, 0)
-        #self.m.resize(self.width, self.height)
-
+        self.connection = _UpdateUiBackgroundColor()
+        self.connection.updateSignal.connect(self._update_ui_color)
+        self.setGeometry(
+            int(GetSystemMetrics(0) * .4),  # left
+            int(GetSystemMetrics(1) * .4),  # top
+            int(GetSystemMetrics(0) * .2),  # height
+            int(GetSystemMetrics(1) * .2)  # width
+        )
+        self.setWindowTitle('Color')
         self.show()
 
-    def updateBackgroundColor(self, red, green, blue):
-        self.setAutoFillBackground(True)
-        p = self.palette()
+    def _update_ui_color(self, red, green, blue):
+        p = QPalette()
         p.setColor(self.backgroundRole(), QColor(red, green, blue))
         self.setPalette(p)
-        self.show()
+        # force the UI to update
+        QCoreApplication.processEvents()
 
-
-
-class PaintWidget(QWidget):
-    def paintEvent(self, event):
-        qp = QPainter(self)
-
-        qp.setPen(Qt.black)
-        size = self.size()
-
-        # Colored rectangles
-        qp.setBrush(QColor(200, 0, 0))
-        qp.drawRect(0, 0, 100, 100)
-
-        qp.setBrush(QColor(0, 200, 0))
-        qp.drawRect(100, 0, 100, 100)
-
-        qp.setBrush(QColor(0, 0, 200))
-        qp.drawRect(200, 0, 100, 100)
-
-        # Color Effect
-        for i in range(0, 100):
-            qp.setBrush(QColor(i * 10, 0, 0))
-            qp.drawRect(10 * i, 100, 10, 32)
-
-            qp.setBrush(QColor(i * 10, i * 10, 0))
-            qp.drawRect(10 * i, 100 + 32, 10, 32)
-
-            qp.setBrush(QColor(i * 2, i * 10, i * 1))
-            qp.drawRect(10 * i, 100 + 64, 10, 32)
-
-
+    def update_color(self, r, g, b):
+        self.connection.updateSignal.emit(r, g, b)

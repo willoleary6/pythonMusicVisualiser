@@ -10,12 +10,16 @@ from random import randrange
 app = QApplication(sys.argv)
 visualiser = DebugVisualiser()
 
+while True:
+    for r in range(255):
+        visualiser.update_color(r, 0, 0)
+        time.sleep(0.01)
+    for g in range(255):
+        visualiser.update_color(0, g, 0)
+        time.sleep(0.01)
+    for b in range(255):
+        visualiser.update_color(0, 0, b)
+        time.sleep(0.01)
 
 
-for x in range(0,10):
-    r = randrange(254)
-    g = randrange(254)
-    b = randrange(254)
-    time.sleep(1)
-    visualiser.updateBackgroundColor(r,g,b)
 sys.exit(app.exec_())
