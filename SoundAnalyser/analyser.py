@@ -9,13 +9,13 @@ from PyQt5.QtWidgets import QApplication
 from DebugVisualiser.DebugVisualiser import DebugVisualiser
 
 numpy.set_printoptions(threshold=sys.maxsize)
-input = soundcard.all_microphones(include_loopback=True)[1]
+input = soundcard.all_microphones(include_loopback=True)[0]
 samplerate = 48000
 chunk = 1024
 
 #print(object_methods)
 print(input)
-#print(input.recorder(samplerate))
+print(input.recorder(samplerate))
 default_speaker = soundcard.default_speaker()
 
 data = input.record(samplerate=48000, numframes=48000)
