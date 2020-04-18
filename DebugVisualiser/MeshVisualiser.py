@@ -5,68 +5,50 @@ import sys
 
 
 from opensimplex import OpenSimplex
+import pyaudio
+import struct
 
 
 class Terrain(object):
     def __init__(self):
         self.app = QtGui.QApplication(sys.argv)
-        self.w = gl.GLViewWidget()
-        self.w.setGeometry(0, 110, 1920, 1080)
-        self.w.show()
-        self.w.setWindowTitle('terrain')
-        self.w.setCameraPosition(distance=30, elevation=8)
+        self.window = gl.GLViewWidget()
+        self.window.setGeometry(0, 110, 1920, 1080)
+        self.window.show()
+        self.window.setWindowTitle('terrain')
+        self.window.setCameraPosition(distance=30, elevation=8)
 
         grid = gl.GLGridItem()
         grid.scale(2, 2, 2)
-        self.w.addItem(grid)
+        self.window.addItem(grid)
 
-        self.nstep = 1  # distance between each virtice
-        self.ypoints = range(-20, 22, self.nstep)
-        self.xpoints = range(-20, 22, self.nstep)
+        self.nstep = 1.3  # distance between each virtice
+        self.ypoints = range(-20, 22, int(self.nstep))
+        self.xpoints = range(-20, 22, int(self.nstep))
 
         self.nfaces = len(self.ypoints)  # what is used to loop over faces
 
-        self.tmp = OpenSimplex()
+        # audio
+        self.sample_rate = 44100 #44.1 KH
+        self.chunk = len(self.xpoints) * len(self.ypoints)
+
+        self.p = pyaudio.PyAudio()
+        self.stream = self.p.open(
+            format= pyaudio.paInt16,
+            channels=1,
+            rate=self.sample_rate,
+            input=True,
+            output=True,
+            frames_per_buffer=self.chunk
+        )
+
+
+        # perlin noise object
+        self.noise = OpenSimplex()
 
         self.offset = 0
 
-        # populating vertices each point is gonna be a list
-        verts = np.array([
-            [
-                x,
-                y,
-                1.5 * self.tmp.noise2d(x=(n / 5) , y=(m / 5))  # this will be the noise value
-            ] for n, x, in enumerate(self.xpoints) for m, y in enumerate(self.ypoints)
-            # each loop iteration we create a list with 3 values for each x and y value
-        ], dtype=np.float32)
-
-        # populate the faces
-        faces = []
-
-        colors = []
-        for m in range(self.nfaces - 1):
-            # define y-offset
-            yoff = m * self.nfaces
-            for n in range(self.nfaces - 1):
-                # adding faces to faces list
-                faces.append([  # each face is a triangle, and eac of these is the corners of each triangle
-                    n + yoff,
-                    yoff + n + self.nfaces,
-                    # adding nfaces as that will get us point 2 & 3 currently not on the current row
-                    yoff + n + self.nfaces + 1
-                ])
-
-                faces.append([
-                    n + yoff,
-                    yoff + n + 1,
-                    yoff + n + self.nfaces + 1
-                ])
-
-                colors.append([100, 100, 50, .2])
-                colors.append([100, 100, 50, .2])
-
-        faces = np.array(faces)
-        colors = np.array(colors)
+        verts, faces, colors = self.mesh()
         self.m1 = gl.GLMeshItem(
             vertexes=verts,
             faces=faces, faceColors=colors,
@@ -74,20 +56,28 @@ class Terrain(object):
         )
 
         self.m1.setGLOptions('additive')
-        self.w.addItem(self.m1)
+        self.window.addItem(self.m1)
 
-    def update(self):
+    def mesh(self, offset=0, height=1.5, wave_form_data = None):
+        if wave_form_data is not None:
+            wave_form_data = struct.unpack(str(2 * self.CHUNK) + 'B', wave_form_data)
+            wave_form_data = np.array(wave_form_data, dtype='b')[::2] + 128 # split to remove doubles
+            wave_form_data = np.array(wave_form_data, dtype='int32') - 128 # centre at 0
+            wave_form_data = wave_form_data * 0.04 # lower amplitude
+            wave_form_data = wave_form_data.reshape((len(self.xpoints), len(self.ypoints)))
+        else:
+            wave_form_data = np.array([1] * 1024)
+            wave_form_data = wave_form_data.reshape((len(self.xpoints), len(self.ypoints)))
 
         # populating vertices each point is gonna be a list
         verts = np.array([
             [
                 x,
                 y,
-                1.5 * self.tmp.noise2d(x=n / 5 + self.offset, y=m / 5 + self.offset)  # this will be the noise value
+                wave_form_data[n][x] * self.noise.noise2d(x=n / 5 + offset, y=m / 5 + offset)  # this will be the noise value
             ] for n, x, in enumerate(self.xpoints) for m, y in enumerate(self.ypoints)
             # each loop iteration we create a list with 3 values for each x and y value
         ], dtype=np.float32)
-
         # populate the faces
         faces = []
 
@@ -116,6 +106,12 @@ class Terrain(object):
         faces = np.array(faces)
         colors = np.array(colors)
 
+        return verts, faces, colors
+
+    def update(self):
+        # populating vertices each point is gonna be a list
+        wave_form_data = self.stream.read(self.chunk)
+        verts, faces, colors = self.mesh(offset=self.offset, wave_form_data= wave_form_data)
         self.m1.setMeshData(
             vertexes=verts,
             faces=faces, faceColors=colors,
