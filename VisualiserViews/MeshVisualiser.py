@@ -14,19 +14,6 @@ import struct
 
 defaultframes = 512
 
-class textcolors:
-    if not os.name == 'nt':
-        blue = '\033[94m'
-        green = '\033[92m'
-        warning = '\033[93m'
-        fail = '\033[91m'
-        end = '\033[0m'
-    else:
-        blue = ''
-        green = ''
-        warning = ''
-        fail = ''
-        end = ''
 
 class Terrain(object):
     def __init__(self):
@@ -41,7 +28,7 @@ class Terrain(object):
         grid.scale(2, 2, 2)
         self.window.addItem(grid)
 
-        self.nstep = 1.3  # distance between each virtice
+        self.nstep = 1.9  # distance between each virtice
         self.ypoints = range(-20, 22, int(self.nstep))
         self.xpoints = range(-20, 22, int(self.nstep))
 
@@ -53,80 +40,8 @@ class Terrain(object):
 
         self.p = pyaudio.PyAudio()
 
-        recorded_frames = []
-        device_info = {}
-        useloopback = False
-        recordtime = 5
-
-        # Use module
-        #p = pyaudio.PyAudio()
-
-        # Set default to first in list or ask Windows
-        '''
-        try:
-            default_device_index = self.p.get_default_input_device_info()
-        except IOError:
-            default_device_index = -1
-
-        # Select Device
-        print(textcolors.blue + "Available devices:\n" + textcolors.end)
-        for i in range(0, self.p.get_device_count()):
-            info = self.p.get_device_info_by_index(i)
-            print(textcolors.green + str(info["index"]) + textcolors.end + ": \t %s \n \t %s \n" % (
-            info["name"], self.p.get_host_api_info_by_index(info["hostApi"])["name"]))
-
-            if default_device_index == -1:
-                default_device_index = info["index"]
-
-        # Handle no devices available
-        if default_device_index == -1:
-            print(textcolors.fail + "No device available. Quitting." + textcolors.end)
-            exit()
-
-        # Get input or default
-        device_id = int(input("Choose device [" + textcolors.blue + str(
-            default_device_index) + textcolors.end + "]: ") or default_device_index)
-        print("")
-
-        # Get device info
-        try:
-            device_info = self.p.get_device_info_by_index(device_id)
-        except IOError:
-            device_info = self.p.get_device_info_by_index(default_device_index)
-            print(textcolors.warning + "Selection not available, using default." + textcolors.end)
-        
-        # Choose between loopback or standard mode
-        is_input = device_info["maxInputChannels"] > 0
-        is_wasapi = (self.p.get_host_api_info_by_index(device_info["hostApi"])["name"]).find("WASAPI") != -1
-        if is_input:
-            print(textcolors.blue + "Selection is input using standard mode.\n" + textcolors.end)
-        else:
-            if is_wasapi:
-                useloopback = True;
-                print(textcolors.green + "Selection is output. Using loopback mode.\n" + textcolors.end)
-            else:
-                print(
-                    textcolors.fail + "Selection is input and does not support loopback mode. Quitting.\n" + textcolors.end)
-                exit()
-        '''
-
         # Open stream
         channelcount = 2
-        '''
-        print(textcolors.blue + "Available devices:\n" + textcolors.end)
-        for i in range(0, self.p.get_device_count()):
-            info = self.p.get_device_info_by_index(i)
-            print(textcolors.green + str(info["index"]) + textcolors.end + ": \t %s \n \t %s \n" % (
-                info["name"], self.p.get_host_api_info_by_index(info["hostApi"])["name"]))
-
-           
-
-        device_id = int(input("Choose device "))
-        print("")
-        '''
-        #print(device_info["defaultSampleRate"])
-        #print(defaultframes)
-        ##print(device_info["index"])
         self.stream = self.p.open(
             format=pyaudio.paInt16,
             channels=channelcount,
@@ -136,8 +51,6 @@ class Terrain(object):
             input_device_index= 7,# headphones 5,#device_info["index"],
             as_loopback=True
         )
-
-
 
         # perlin noise object
         self.noise = OpenSimplex()
@@ -158,11 +71,9 @@ class Terrain(object):
 
         if wave_form_data is not None:
 
-            #wave_form_data = struct.unpack(str(2 * self.CHUNK) + 'B', wave_form_data)
-            print(wave_form_data)
-            #wave_form_data = np.array(wave_form_data, dtype='int32')[::2] + 128 # split to remove doubles
             wave_form_data = np.array(wave_form_data, dtype='int32') - 128 # centre at 0
-            wave_form_data = wave_form_data * 0.00000004 # lower amplitude
+            wave_form_data = wave_form_data * 0.00000008 # lower amplitude
+
             wave_form_data = wave_form_data.reshape((len(self.xpoints), len(self.ypoints)))
         else:
             wave_form_data = np.array([1] * 1764)
@@ -215,12 +126,7 @@ class Terrain(object):
         #print(wave_form_data)
 
         audio_array = numpy.frombuffer(wave_form_data, dtype='int32')
-        #print(int(len(audio_array)))
-        #print(len(self.xpoints))
-        #print(len(self.ypoints))
-        #audio_array.reshape((len(self.xpoints), len(self.ypoints)))
-        #audio_array = audio_array.reshape(int(len(audio_array)/2), 2)
-        #print(audio_array)
+
         verts, faces, colors = self.mesh(
             offset=self.offset,
             wave_form_data= audio_array
@@ -231,7 +137,7 @@ class Terrain(object):
             smooth=False, drawEdges=True
         )
 
-        self.offset -= .00000000000001 # simulates movement
+        self.offset -= .00000001 # simulates movement
 
     def animation(self):
         timer = QtCore.QTimer()

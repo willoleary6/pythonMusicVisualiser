@@ -4,7 +4,7 @@ import threading
 
 from PyQt5.QtWidgets import QApplication
 
-from DebugVisualiser.DebugVisualiser import DebugVisualiser
+from VisualiserViews.DebugVisualiser import DebugVisualiser
 from random import randrange
 
 app = QApplication(sys.argv)
